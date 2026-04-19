@@ -6,29 +6,31 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-# API Anahtarını çek
-api_key = os.environ.get("GEMINI_API_KEY")
-genai.configure(api_key=api_key)
+# API anahtarını al ve yapılandır
+genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
-# 404 hatasını geçmek için en standart model ismini kullanıyoruz
-model = genai.GenerativeModel('gemini-pro')
+# Hata ihtimalini sıfırlamak için en yalın haliyle modeli tanımla
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 @app.route('/chat', methods=['POST'])
 def chat():
-    data = request.json
-    user_message = data.get("message", "")
-    
-    # Talimatı direkt burada veriyoruz ki hata payı kalmasın
-    prompt = f"Sen Şanlıurfa hakkında uzman bir yapay zeka asistanısın. İsmim Ferit. Soru: {user_message}"
-    
     try:
-        response = model.generate_content(prompt)
-        # Cevabın boş gelme ihtimaline karşı kontrol
-        if response.text:
+        data = request.json
+        user_message = data.get("message", "")
+        
+        # Talimatı direkt burada birleştiriyoruz
+        full_prompt = f"Sen Şanlıurfa uzmanı 'Urfamız AI'sın. Soru: {user_message}"
+        
+        response = model.generate_content(full_prompt)
+        
+        if response and response.text:
             return jsonify({"reply": response.text})
         else:
-            return jsonify({"reply": "Üzgünüm, şu an cevap üretemedim."})
+            return jsonify({"reply": "Cevap oluşturulamadı, lütfen tekrar dene."})
+            
     except Exception as e:
+        # Hatayı ekrana bas ki ne olduğunu görelim
+        print(f"HATA: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/')
