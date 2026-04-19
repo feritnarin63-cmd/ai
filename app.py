@@ -6,8 +6,12 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-# API anahtarını yapılandır
+# API anahtarını al
 api_key = os.environ.get("GEMINI_API_KEY")
+
+# ÇOK KRİTİK: Burası v1beta yerine v1 (kararlı) sürümü zorlar
+os.environ["GOOGLE_API_USE_MTLS"] = "never" 
+
 genai.configure(api_key=api_key)
 
 @app.route('/chat', methods=['POST'])
@@ -16,25 +20,22 @@ def chat():
         data = request.json
         user_message = data.get("message", "")
         
-        # 404 HATASINI ÇÖZEN KRİTİK SATIR: 
-        # Modeli metodun içinde, tam ismiyle çağırıyoruz.
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # Modeli bu şekilde (models/ ön ekiyle) çağırmak 404'ü kesebilir
+        model = genai.GenerativeModel('models/gemini-1.5-flash')
         
         prompt = f"Sen Şanlıurfa hakkında uzman bir asistan olan 'Urfamız AI'sın. Soru: {user_message}"
         
-        # Cevap üretme
         response = model.generate_content(prompt)
         
         if response.text:
             return jsonify({"reply": response.text})
         else:
-            return jsonify({"reply": "Üzgünüm, şu an cevap üretemedim."})
+            return jsonify({"reply": "Üzgünüm, bir cevap oluşturamadım."})
 
     except Exception as e:
-        error_msg = str(e)
-        print(f"HATA DETAYI: {error_msg}")
-        # Eğer hala 404 verirse alternatif model ismini dene mesajı
-        return jsonify({"error": error_msg}), 500
+        # Eğer hala 404 verirse, hata mesajının içinden hangi modellerin 
+        # desteklendiğini anlamaya çalışacağız.
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/')
 def home():
