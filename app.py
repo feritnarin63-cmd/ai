@@ -15,15 +15,15 @@ def chat():
         data = request.json
         user_message = data.get("message", "")
         
-        # Ücretsiz kotası en stabil olan model: gemini-1.5-flash
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
+        # 'gemini-1.5-flash' yerine 'gemini-1.5-flash-latest' kullanarak 404 hatasını bypass ediyoruz
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={API_KEY}"
         
         headers = {'Content-Type': 'application/json'}
         
         payload = {
             "contents": [{
                 "parts": [{
-                    "text": f"Sen Şanlıurfa uzmanı Urfamız AI'sın. Samimi bir dille Şanlıurfa şivesiyle selamla ve cevap ver. Soru: {user_message}"
+                    "text": f"Sen Şanlıurfa uzmanı Urfamız AI'sın. Samimi bir dille, Şanlıurfa şivesiyle selam ver ve yardımcı ol. Soru: {user_message}"
                 }]
             }]
         }
@@ -36,8 +36,9 @@ def chat():
                 reply = res_data['candidates'][0]['content']['parts'][0]['text']
                 return jsonify({"reply": reply})
             else:
-                return jsonify({"reply": "Şu an cevap veremiyorum kurban, tekrar dene."})
+                return jsonify({"reply": "Valla kurban bir hata oldu, hele bir daha sor."})
         else:
+            # Hata mesajını detaylandırıyoruz
             error_msg = res_data.get("error", {}).get("message", "Bilinmeyen hata")
             return jsonify({"error": f"Google Hatası: {error_msg}"}), response.status_code
 
@@ -46,7 +47,7 @@ def chat():
 
 @app.route('/')
 def home():
-    return "Urfamız AI Sunucusu Aktif!"
+    return "Urfamız AI Sunucusu Aktif! Urfa'ya selamlar."
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
