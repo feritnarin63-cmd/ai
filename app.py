@@ -1,54 +1,52 @@
-import os
-import requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+import google.generativeai as genai
+import os
 
 app = Flask(__name__)
-CORS(app)
+CORS(app)  # Sitenin farklı bir domain/port üzerinden erişebilmesi için
 
-# Render panelinden gelen API anahtarı
-API_KEY = os.environ.get("GEMINI_API_KEY")
+# 1. Gemini API Yapılandırması
+# API anahtarını doğrudan yazabilir veya ortam değişkeni kullanabilirsin
+os.environ["GOOGLE_API_KEY"] = "YOUR_GEMINI_API_KEY"
+genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
 
-@app.route('/chat', methods=['POST'])
-def chat():
+model = genai.GenerativeModel('gemini-1.5-flash')
+
+# 2. Asistanın Kişiliği (System Instruction)
+SYSTEM_PROMPT = """
+Sen urfamiz.com sitesinin resmi yapay zeka asistanısın. 
+Görevlerin:
+- Şanlıurfa hakkında tarih, kültür ve güncel haber bilgisi vermek.
+- Kullanıcılara samimi, yerel kültüre saygılı ve yardımsever bir dille cevap vermek.
+- Eğer bilmediğin bir haber varsa 'Sitemizdeki güncel haberleri kontrol ediyorum' diyerek geçiştirme, 
+mevcut genel bilginle yardımcı ol.
+- Cevaplarını kısa ve öz tut, kullanıcıyı yorma.
+"""
+
+@app.route('/ask', methods=['POST'])
+def ask_ai():
     try:
-        data = request.json
-        user_message = data.get("message", "")
-        
-        # 'gemini-1.5-flash' yerine 'gemini-1.5-flash-latest' kullanarak 404 hatasını bypass ediyoruz
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={API_KEY}"
-        
-        headers = {'Content-Type': 'application/json'}
-        
-        payload = {
-            "contents": [{
-                "parts": [{
-                    "text": f"Sen Şanlıurfa uzmanı Urfamız AI'sın. Samimi bir dille, Şanlıurfa şivesiyle selam ver ve yardımcı ol. Soru: {user_message}"
-                }]
-            }]
-        }
+        user_data = request.json
+        user_question = user_data.get('question')
 
-        response = requests.post(url, headers=headers, json=payload)
-        res_data = response.json()
+        if not user_question:
+            return jsonify({"error": "Soru boş olamaz"}), 400
 
-        if response.status_code == 200:
-            if 'candidates' in res_data and len(res_data['candidates']) > 0:
-                reply = res_data['candidates'][0]['content']['parts'][0]['text']
-                return jsonify({"reply": reply})
-            else:
-                return jsonify({"reply": "Valla kurban bir hata oldu, hele bir daha sor."})
-        else:
-            # Hata mesajını detaylandırıyoruz
-            error_msg = res_data.get("error", {}).get("message", "Bilinmeyen hata")
-            return jsonify({"error": f"Google Hatası: {error_msg}"}), response.status_code
+        # Modeli çalıştır
+        chat = model.start_chat(history=[])
+        full_prompt = f"{SYSTEM_PROMPT}\n\nKullanıcı: {user_question}"
+        
+        response = chat.send_message(full_prompt)
+        
+        return jsonify({
+            "status": "success",
+            "answer": response.text
+        })
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/')
-def home():
-    return "Urfamız AI Sunucusu Aktif! Urfa'ya selamlar."
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
+    # Localde test etmek için 5000 portunda çalışır
+    app.run(debug=True, port=5000)
