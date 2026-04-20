@@ -1,52 +1,33 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
+from flask import Flask, render_template, request, jsonify
 import google.generativeai as genai
-import os
 
 app = Flask(__name__)
-CORS(app)  # Sitenin farklı bir domain/port üzerinden erişebilmesi için
 
-# 1. Gemini API Yapılandırması
-# API anahtarını doğrudan yazabilir veya ortam değişkeni kullanabilirsin
-os.environ["GOOGLE_API_KEY"] = "YOUR_GEMINI_API_KEY"
-genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
-
+# Gemini Konfigürasyonu
+genai.configure(api_key="YOUR_GEMINI_API_KEY")
 model = genai.GenerativeModel('gemini-1.5-flash')
 
-# 2. Asistanın Kişiliği (System Instruction)
-SYSTEM_PROMPT = """
-Sen urfamiz.com sitesinin resmi yapay zeka asistanısın. 
-Görevlerin:
-- Şanlıurfa hakkında tarih, kültür ve güncel haber bilgisi vermek.
-- Kullanıcılara samimi, yerel kültüre saygılı ve yardımsever bir dille cevap vermek.
-- Eğer bilmediğin bir haber varsa 'Sitemizdeki güncel haberleri kontrol ediyorum' diyerek geçiştirme, 
-mevcut genel bilginle yardımcı ol.
-- Cevaplarını kısa ve öz tut, kullanıcıyı yorma.
+# Asistan Kuralları
+SYSTEM_CONTEXT = """
+Sen urfamiz.com/ai adresindeki resmi yapay zeka asistanısın. 
+Şanlıurfa yerel basınına, kültürüne ve güncel olaylara hakimsin.
+Cevap verirken urfamiz.com vizyonuyla, tarafsız ve hızlı bilgi sağla.
 """
 
-@app.route('/ask', methods=['POST'])
-def ask_ai():
+@app.route('/')
+def index():
+    # Bu rota urfamiz.com/ai adresine girince çalışır
+    return render_template('index.html')
+
+@app.route('/chat', methods=['POST'])
+def chat():
+    user_msg = request.json.get('message')
     try:
-        user_data = request.json
-        user_question = user_data.get('question')
-
-        if not user_question:
-            return jsonify({"error": "Soru boş olamaz"}), 400
-
-        # Modeli çalıştır
-        chat = model.start_chat(history=[])
-        full_prompt = f"{SYSTEM_PROMPT}\n\nKullanıcı: {user_question}"
-        
-        response = chat.send_message(full_prompt)
-        
-        return jsonify({
-            "status": "success",
-            "answer": response.text
-        })
-
+        # Prompt'u sistem bağlamıyla birleştir
+        response = model.generate_content(f"{SYSTEM_CONTEXT}\nSoru: {user_msg}")
+        return jsonify({"reply": response.text})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"reply": "Şu an teknik bir aksaklık yaşıyorum, lütfen Urfamız ekibiyle iletişime geçin."}), 500
 
-if __name__ == '__main__':
-    # Localde test etmek için 5000 portunda çalışır
-    app.run(debug=True, port=5000)
+if __name__ == "__main__":
+    app.run()
