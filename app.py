@@ -14,8 +14,9 @@ def chat():
         data = request.json
         user_message = data.get("message", "")
         
-        # Kesin çözüm için v1beta ve gemini-pro kullanıyoruz
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={API_KEY}"
+        # 2026'nın en kararlı modeli: gemini-2.0-flash
+        # Not: Eğer hata alırsan 'gemini-1.5-flash' da denenebilir ama 2.0 şu an standart.
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={API_KEY}"
         
         headers = {'Content-Type': 'application/json'}
         
@@ -31,15 +32,15 @@ def chat():
         res_data = response.json()
 
         if response.status_code == 200:
-            # Yanıt yapısını kontrol ederek veriyi çekiyoruz
             if 'candidates' in res_data and len(res_data['candidates']) > 0:
                 reply = res_data['candidates'][0]['content']['parts'][0]['text']
                 return jsonify({"reply": reply})
             else:
                 return jsonify({"reply": "Şu an cevap veremiyorum, lütfen tekrar dene."})
         else:
-            error_detail = res_data.get("error", {}).get("message", "Bilinmeyen hata")
-            return jsonify({"error": f"Google Hatası: {error_detail}"}), response.status_code
+            # Hata detayını daha net görelim
+            error_msg = res_data.get("error", {}).get("message", "Bilinmeyen hata")
+            return jsonify({"error": f"Google Hatası: {error_msg}"}), response.status_code
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
