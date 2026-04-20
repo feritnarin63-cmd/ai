@@ -6,6 +6,7 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
+# Render panelinden gelen API anahtarı
 API_KEY = os.environ.get("GEMINI_API_KEY")
 
 @app.route('/chat', methods=['POST'])
@@ -14,16 +15,15 @@ def chat():
         data = request.json
         user_message = data.get("message", "")
         
-        # 2026'nın en kararlı modeli: gemini-2.0-flash
-        # Not: Eğer hata alırsan 'gemini-1.5-flash' da denenebilir ama 2.0 şu an standart.
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={API_KEY}"
+        # Ücretsiz kotası en stabil olan model: gemini-1.5-flash
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
         
         headers = {'Content-Type': 'application/json'}
         
         payload = {
             "contents": [{
                 "parts": [{
-                    "text": f"Sen Şanlıurfa uzmanı Urfamız AI'sın. Samimi bir dille cevap ver. Soru: {user_message}"
+                    "text": f"Sen Şanlıurfa uzmanı Urfamız AI'sın. Samimi bir dille Şanlıurfa şivesiyle selamla ve cevap ver. Soru: {user_message}"
                 }]
             }]
         }
@@ -36,9 +36,8 @@ def chat():
                 reply = res_data['candidates'][0]['content']['parts'][0]['text']
                 return jsonify({"reply": reply})
             else:
-                return jsonify({"reply": "Şu an cevap veremiyorum, lütfen tekrar dene."})
+                return jsonify({"reply": "Şu an cevap veremiyorum kurban, tekrar dene."})
         else:
-            # Hata detayını daha net görelim
             error_msg = res_data.get("error", {}).get("message", "Bilinmeyen hata")
             return jsonify({"error": f"Google Hatası: {error_msg}"}), response.status_code
 
