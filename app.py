@@ -14,30 +14,30 @@ def chat():
         data = request.json
         user_message = data.get("message", "")
         
-        # Google'ın ham API adresi (v1 sürümü zorlamalı)
-        url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={API_KEY}"
+        # Kesin çözüm için v1beta ve gemini-pro kullanıyoruz
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={API_KEY}"
         
         headers = {'Content-Type': 'application/json'}
         
         payload = {
             "contents": [{
                 "parts": [{
-                    "text": f"Sen Şanlıurfa uzmanı Urfamız AI'sın. Soru: {user_message}"
+                    "text": f"Sen Şanlıurfa uzmanı Urfamız AI'sın. Samimi bir dille cevap ver. Soru: {user_message}"
                 }]
             }]
         }
 
-        # İsteği gönderiyoruz
         response = requests.post(url, headers=headers, json=payload)
         res_data = response.json()
 
-        # Yanıtı kontrol et
         if response.status_code == 200:
-            # Google'dan gelen karmaşık JSON içinden cevabı çekiyoruz
-            reply = res_data['candidates'][0]['content']['parts'][0]['text']
-            return jsonify({"reply": reply})
+            # Yanıt yapısını kontrol ederek veriyi çekiyoruz
+            if 'candidates' in res_data and len(res_data['candidates']) > 0:
+                reply = res_data['candidates'][0]['content']['parts'][0]['text']
+                return jsonify({"reply": reply})
+            else:
+                return jsonify({"reply": "Şu an cevap veremiyorum, lütfen tekrar dene."})
         else:
-            # Hata varsa ne olduğunu tam olarak görelim
             error_detail = res_data.get("error", {}).get("message", "Bilinmeyen hata")
             return jsonify({"error": f"Google Hatası: {error_detail}"}), response.status_code
 
